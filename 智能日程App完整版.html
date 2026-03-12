@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>智能日程 App</title>
+<!-- Tailwind CSS -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/0915/3.4.17.js"></script>
+<!-- Font Awesome -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/js/all.min.js"></script>
+<link href="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/css/fontawesome.min.css" rel="stylesheet"/>
+<!-- Tailwind Config for Dark Mode -->
+<script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        
+        /* Transitions */
+        .transition-all-300 {
+            transition: all 0.3s ease;
+        }
+
+        /* Timeline specific styles */
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(24, 1fr);
+            min-width: 1200px;
+        }
+        
+        /* Toast Animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: slideIn 0.3s forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 h-screen flex flex-col overflow-hidden">
+<!-- Header -->
+<header class="bg-white dark:bg-gray-800 shadow-sm z-20 flex-none">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<i class="fa-solid fa-calendar-check text-blue-500 text-2xl"></i>
+<h1 class="text-xl font-bold tracking-tight">智能日程</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md dark:text-blue-400 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors" id="smart-schedule-btn">
+<i class="fa-solid fa-wand-magic-sparkles"></i>
+<span>智能排程</span>
+</button>
+<button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400" id="theme-toggle-desktop">
+<i class="fa-solid fa-moon"></i>
+</button>
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors flex items-center gap-2" onclick="app.openEventModal()">
+<i class="fa-solid fa-plus"></i>
+<span class="hidden sm:inline">新建日程</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Layout -->
+<div class="flex flex-1 overflow-hidden max-w-7xl mx-auto w-full">
+<!-- Sidebar (Navigation) -->
+<aside class="w-16 sm:w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-none transition-all duration-300">
+<nav class="p-2 sm:p-4 space-y-1 overflow-y-auto">
+<button class="view-btn w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group active-view" data-view="month" onclick="app.switchView('month')">
+<i class="fa-solid fa-calendar-days text-gray-400 group-hover:text-blue-500 w-5 text-center"></i>
+<span class="hidden sm:block">月视图</span>
+</button>
+<button class="view-btn w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group" data-view="week" onclick="app.switchView('week')">
+<i class="fa-solid fa-calendar-week text-gray-400 group-hover:text-blue-500 w-5 text-center"></i>
+<span class="hidden sm:block">周视图</span>
+</button>
+<button class="view-btn w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group" data-view="day" onclick="app.switchView('day')">
+<i class="fa-solid fa-calendar-day text-gray-400 group-hover:text-blue-500 w-5 text-center"></i>
+<span class="hidden sm:block">日视图</span>
+</button>
+<button class="view-btn w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group" data-view="agenda" onclick="app.switchView('agenda')">
+<i class="fa-solid fa-list-ul text-gray-400 group-hover:text-blue-500 w-5 text-center"></i>
+<span class="hidden sm:block">议程</span>
+</button>
+<button class="view-btn w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group" data-view="timeline" onclick="app.switchView('timeline')">
+<i class="fa-solid fa-timeline text-gray-400 group-hover:text-blue-500 w-5 text-center"></i>
+<span class="hidden sm:block">时间线</span>
+</button>
+<div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 hidden sm:block">
+<p class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">分类</p>
+<div class="space-y-1" id="category-filters">
+<!-- Generated by JS -->
+</div>
+</div>
+</nav>
+<!-- Mobile Theme Toggle (Bottom of sidebar) -->
+<div class="mt-auto p-4 border-t border-gray-200 dark:border-gray-700 sm:hidden flex justify-center">
+<button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" id="theme-toggle-mobile">
+<i class="fa-solid fa-moon"></i>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative overflow-hidden bg-white dark:bg-gray-900">
+<!-- Toolbar -->
+<div class="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sm:px-6 bg-white dark:bg-gray-900 flex-none z-10">
+<div class="flex items-center gap-4">
+<button class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" onclick="app.navigateDate(-1)">
+<i class="fa-solid fa-chevron-left"></i>
+</button>
+<h2 class="text-lg font-semibold min-w-[120px] text-center select-none" id="current-date-display"></h2>
+<button class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" onclick="app.navigateDate(1)">
+<i class="fa-solid fa-chevron-right"></i>
+</button>
+<button class="ml-2 text-sm text-blue-600 hover:text-blue-700 font-medium" onclick="app.resetToToday()">今天</button>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-xs sm:text-sm px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800" onclick="app.showEisenhowerMatrix()">
+<i class="fa-solid fa-border-all mr-1"></i> 矩阵视图
+                    </button>
+</div>
+</div>
+<!-- View Container -->
+<div class="flex-1 overflow-auto relative bg-gray-50 dark:bg-gray-900/50" id="view-container">
+<!-- Content injected by JS -->
+</div>
+</main>
+</div>
+<!-- Event Modal -->
+<div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-0 z-50 hidden" id="event-modal" role="dialog">
+<div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onclick="app.closeEventModal()"></div>
+<div class="fixed inset-0 z-10 overflow-y-auto">
+<div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+<div class="relative transform overflow-hidden rounded-xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-gray-200 dark:border-gray-700">
+<div class="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white" id="modal-title">新建日程</h3>
+<button class="text-gray-400 hover:text-gray-500" onclick="app.closeEventModal()">
+<i class="fa-solid fa-xmark text-xl"></i>
+</button>
+</div>
+<form class="space-y-4" id="event-form">
+<input id="event-id" type="hidden"/>
+<!-- Clipboard Import Button -->
+<div class="flex justify-end mb-2">
+<button class="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline" onclick="app.importFromClipboard()" type="button">
+<i class="fa-regular fa-clipboard"></i> 从剪贴板导入
+                                </button>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">标题</label>
+<input class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" id="event-title" placeholder="例如：团队周会" required="" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">开始时间</label>
+<input class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" id="event-start" required="" type="datetime-local"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">结束时间</label>
+<input class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" id="event-end" required="" type="datetime-local"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">分类</label>
+<select class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" id="event-category">
+<option value="work">工作</option>
+<option value="life">生活</option>
+<option value="personal">个人</option>
+<option value="health">健康</option>
+</select>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">优先级 (1-5)</label>
+<select class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" id="event-priority">
+<option value="1">1 - 低</option>
+<option value="2">2 - 普通</option>
+<option selected="" value="3">3 - 中等</option>
+<option value="4">4 - 高</option>
+<option value="5">5 - 紧急</option>
+</select>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">地点</label>
+<div class="flex gap-2">
+<div class="relative flex-1">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<i class="fa-solid fa-location-dot text-gray-400"></i>
+</div>
+<input class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pl-10 pr-3 py-2 border" id="event-location" placeholder="输入地点" type="text"/>
+</div>
+</div>
+<div class="mt-1 flex items-center gap-2">
+<input class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" id="event-location-alert" type="checkbox"/>
+<label class="text-xs text-gray-500 dark:text-gray-400" for="event-location-alert">到达此地时提醒 (地理围栏)</label>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">提醒</label>
+<div class="mt-2 grid grid-cols-3 gap-2">
+<label class="inline-flex items-center">
+<input class="reminder-check rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" type="checkbox" value="0"/>
+<span class="ml-2 text-xs text-gray-600 dark:text-gray-400">准时</span>
+</label>
+<label class="inline-flex items-center">
+<input class="reminder-check rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" type="checkbox" value="5"/>
+<span class="ml-2 text-xs text-gray-600 dark:text-gray-400">5分前</span>
+</label>
+<label class="inline-flex items-center">
+<input class="reminder-check rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" type="checkbox" value="15"/>
+<span class="ml-2 text-xs text-gray-600 dark:text-gray-400">15分前</span>
+</label>
+<label class="inline-flex items-center">
+<input class="reminder-check rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" type="checkbox" value="30"/>
+<span class="ml-2 text-xs text-gray-600 dark:text-gray-400">30分前</span>
+</label>
+<label class="inline-flex items-center">
+<input class="reminder-check rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" type="checkbox" value="60"/>
+<span class="ml-2 text-xs text-gray-600 dark:text-gray-400">1小时前</span>
+</label>
+<label class="inline-flex items-center">
+<input class="reminder-check rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" type="checkbox" value="1440"/>
+<span class="ml-2 text-xs text-gray-600 dark:text-gray-400">1天前</span>
+</label>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">备注</label>
+<textarea class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border" id="event-notes" rows="2"></textarea>
+</div>
+</form>
+</div>
+<div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+<button class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:w-auto" onclick="app.saveEvent()" type="button">保存</button>
+<button class="hidden inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:w-auto" id="btn-delete-event" onclick="app.deleteEvent()" type="button">删除</button>
+<button class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-600 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-500 hover:bg-gray-50 dark:hover:bg-gray-500 sm:mt-0 sm:w-auto" onclick="app.closeEventModal()" type="button">取消</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Eisenhower Matrix Modal -->
+<div aria-modal="true" class="fixed inset-0 z-50 hidden" id="matrix-modal" role="dialog">
+<div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onclick="app.closeMatrixModal()"></div>
+<div class="fixed inset-0 z-10 overflow-y-auto">
+<div class="flex min-h-full items-center justify-center p-4">
+<div class="relative w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-xl font-bold text-gray-900 dark:text-white">艾森豪威尔矩阵 (任务优先级分析)</h3>
+<button class="text-gray-400 hover:text-gray-500" onclick="app.closeMatrixModal()"><i class="fa-solid fa-xmark text-xl"></i></button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-[60vh] overflow-y-auto" id="matrix-content">
+<!-- Matrix Quadrants injected by JS -->
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Toast Container -->
+<div class="fixed top-4 right-4 z-50 flex flex-col gap-2" id="toast-container"></div>
+<script>
+        // --- Data & Constants ---
+        const CATEGORIES = {
+            work: { label: '工作', color: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' },
+            life: { label: '生活', color: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800' },
+            personal: { label: '个人', color: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' },
+            health: { label: '健康', color: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800' }
+        };
+
+        const HOLIDAYS_2026 = {
+            '2026-01-01': '元旦',
+            '2026-02-17': '除夕',
+            '2026-02-18': '春节',
+            '2026-02-19': '春节',
+            '2026-02-20': '春节',
+            '2026-04-04': '清明节',
+            '2026-05-01': '劳动节',
+            '2026-06-19': '端午节',
+            '2026-09-25': '中秋节',
+            '2026-10-01': '国庆节'
+        };
+
+        // --- Store Class ---
+        class Store {
+            constructor() {
+                this.events = JSON.parse(localStorage.getItem('smartSchedule_events')) || [];
+                this.settings = JSON.parse(localStorage.getItem('smartSchedule_settings')) || { theme: 'light' };
+            }
+
+            save() {
+                localStorage.setItem('smartSchedule_events', JSON.stringify(this.events));
+                localStorage.setItem('smartSchedule_settings', JSON.stringify(this.settings));
+            }
+
+            addEvent(event) {
+                this.events.push(event);
+                this.save();
+            }
+
+            updateEvent(updatedEvent) {
+                const index = this.events.findIndex(e => e.id === updatedEvent.id);
+                if (index !== -1) {
+                    this.events[index] = updatedEvent;
+                    this.save();
+                }
+            }
+
+            deleteEvent(id) {
+                this.events = this.events.filter(e => e.id !== id);
+                this.save();
+            }
+
+            getEvents(dateRangeStart, dateRangeEnd) {
+                return this.events.filter(e => {
+                    const start = new Date(e.start);
+                    return start >= dateRangeStart && start <= dateRangeEnd;
+                });
+            }
+            
+            // Get holidays for a specific date string (YYYY-MM-DD)
+            getHoliday(dateStr) {
+                return HOLIDAYS_2026[dateStr] || null;
+            }
+        }
+
+        // --- Main Application Logic ---
+        class App {
+            constructor() {
+                this.store = new Store();
+                this.currentDate = new Date('2026-03-11T00:00:00'); // Default from prompt
+                this.currentView = 'month';
+                this.selectedEventId = null;
+                
+                this.init();
+            }
+
+            init() {
+                this.applyTheme();
+                this.setupEventListeners();
+                this.renderCategoryFilters();
+                this.render();
+                this.startReminderChecker();
+            }
+
+            applyTheme() {
+                const isDark = this.store.settings.theme === 'dark';
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.getElementById('theme-toggle-desktop').innerHTML = '<i class="fa-solid fa-sun"></i>';
+                    document.getElementById('theme-toggle-mobile').innerHTML = '<i class="fa-solid fa-sun"></i>';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.getElementById('theme-toggle-desktop').innerHTML = '<i class="fa-solid fa-moon"></i>';
+                    document.getElementById('theme-toggle-mobile').innerHTML = '<i class="fa-solid fa-moon"></i>';
+                }
+            }
+
+            toggleTheme() {
+                this.store.settings.theme = this.store.settings.theme === 'light' ? 'dark' : 'light';
+                this.store.save();
+                this.applyTheme();
+            }
+
+            setupEventListeners() {
+                document.getElementById('theme-toggle-desktop').addEventListener('click', () => this.toggleTheme());
+                document.getElementById('theme-toggle-mobile').addEventListener('click', () => this.toggleTheme());
+                document.getElementById('smart-schedule-btn').addEventListener('click', () => this.runSmartSchedule());
+            }
+
+            renderCategoryFilters() {
+                const container = document.getElementById('category-filters');
+                container.innerHTML = '';
+                Object.keys(CATEGORIES).forEach(key => {
+                    const cat = CATEGORIES[key];
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors';
+                    btn.innerHTML = `<span class="w-2 h-2 rounded-full ${cat.color.split(' ')[0]}"></span>${cat.label}`;
+                    btn.onclick = () => this.filterByCategory(key);
+                    container.appendChild(btn);
+                });
+            }
+
+            filterByCategory(category) {
+                // Simplified filter: Just show a toast for now, real filtering would update the view logic
+                this.showToast(`已筛选分类: ${CATEGORIES[category].label}`, 'info');
+                // In a full implementation, this would set a state `this.filterCategory = category` and re-render
+            }
+
+            // --- Navigation ---
+            navigateDate(delta) {
+                if (this.currentView === 'month') {
+                    this.currentDate.setMonth(this.currentDate.getMonth() + delta);
+                } else if (this.currentView === 'week') {
+                    this.currentDate.setDate(this.currentDate.getDate() + (delta * 7));
+                } else {
+                    this.currentDate.setDate(this.currentDate.getDate() + delta);
+                }
+                this.render();
+            }
+
+            resetToToday() {
+                this.currentDate = new Date('2026-03-11T00:00:00'); // Keeping consistent with prompt context
+                this.render();
+            }
+
+            switchView(viewName) {
+                this.currentView = viewName;
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    if (btn.dataset.view === viewName) {
+                        btn.classList.add('bg-blue-50', 'text-blue-600', 'dark:bg-blue-900/30', 'dark:text-blue-400');
+                        btn.querySelector('i').classList.add('text-blue-500');
+                    } else {
+                        btn.classList.remove('bg-blue-50', 'text-blue-600', 'dark:bg-blue-900/30', 'dark:text-blue-400');
+                        btn.querySelector('i').classList.remove('text-blue-500');
+                    }
+                });
+                this.render();
+            }
+
+            // --- Rendering ---
+            render() {
+                this.updateDateDisplay();
+                const container = document.getElementById('view-container');
+                container.innerHTML = '';
+
+                switch (this.currentView) {
+                    case 'month': this.renderMonthView(container); break;
+                    case 'week': this.renderWeekView(container); break;
+                    case 'day': this.renderDayView(container); break;
+                    case 'agenda': this.renderAgendaView(container); break;
+                    case 'timeline': this.renderTimelineView(container); break;
+                }
+            }
+
+            updateDateDisplay() {
+                const options = { year: 'numeric', month: 'long' };
+                if (this.currentView === 'day') options.day = 'numeric';
+                document.getElementById('current-date-display').textContent = this.currentDate.toLocaleDateString('zh-CN', options);
+            }
+
+            // --- View: Month ---
+            renderMonthView(container) {
+                const year = this.currentDate.getFullYear();
+                const month = this.currentDate.getMonth();
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Mon start
+                
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-7 h-full auto-rows-fr bg-white dark:bg-gray-800 border-l border-t border-gray-200 dark:border-gray-700';
+
+                // Headers
+                const days = ['一', '二', '三', '四', '五', '六', '日'];
+                days.forEach(d => {
+                    const header = document.createElement('div');
+                    header.className = 'p-2 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800';
+                    header.textContent = d;
+                    grid.appendChild(header);
+                });
+
+                // Empty cells
+                for (let i = 0; i < startDayOfWeek; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'border-b border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50';
+                    grid.appendChild(cell);
+                }
+
+                // Days
+                for (let d = 1; d <= lastDay.getDate(); d++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const cellDate = new Date(year, month, d);
+                    const isToday = dateStr === '2026-03-11';
+                    const holiday = this.store.getHoliday(dateStr);
+
+                    const cell = document.createElement('div');
+                    cell.className = `border-b border-r border-gray-200 dark:border-gray-700 min-h-[100px] p-1 relative hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${isToday ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`;
+                    
+                    // Date Number
+                    const num = document.createElement('span');
+                    num.className = `text-sm font-medium ${isToday ? 'bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-gray-700 dark:text-gray-300'}`;
+                    num.textContent = d;
+                    cell.appendChild(num);
+
+                    // Holiday
+                    if (holiday) {
+                        const hTag = document.createElement('span');
+                        hTag.className = 'text-xs text-red-500 ml-1';
+                        hTag.textContent = holiday;
+                        cell.appendChild(hTag);
+                    }
+
+                    // Events
+                    const dayEvents = this.store.getEvents(
+                        new Date(cellDate.setHours(0,0,0,0)),
+                        new Date(cellDate.setHours(23,59,59,999))
+                    );
+                    
+                    dayEvents.sort((a,b) => new Date(a.start) - new Date(b.start)).forEach(evt => {
+                        const el = document.createElement('div');
+                        const catStyle = CATEGORIES[evt.category] ? CATEGORIES[evt.category].color.split(' ')[0] : 'bg-gray-200';
+                        el.className = `text-xs p-1 mb-1 rounded truncate cursor-pointer border-l-2 ${catStyle} bg-opacity-20 hover:opacity-80`;
+                        el.textContent = `${new Date(evt.start).getHours()}:${String(new Date(evt.start).getMinutes()).padStart(2,'0')} ${evt.title}`;
+                        el.onclick = (e) => { e.stopPropagation(); this.openEventModal(evt.id); };
+                        cell.appendChild(el);
+                    });
+
+                    cell.onclick = () => {
+                        // Quick add logic could go here
+                        const newDate = new Date(year, month, d, 9, 0);
+                        this.openEventModal(null, newDate);
+                    };
+
+                    grid.appendChild(cell);
+                }
+                container.appendChild(grid);
+            }
+
+            // --- View: Week ---
+            renderWeekView(container) {
+                const startOfWeek = new Date(this.currentDate);
+                const day = startOfWeek.getDay();
+                const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); 
+                startOfWeek.setDate(diff);
+                startOfWeek.setHours(0,0,0,0);
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex flex-col h-full bg-white dark:bg-gray-800';
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'flex border-b border-gray-200 dark:border-gray-700';
+                header.innerHTML = '<div class="w-16 flex-none"></div>'; // Time col spacer
+                
+                for(let i=0; i<7; i++) {
+                    const d = new Date(startOfWeek);
+                    d.setDate(d.getDate() + i);
+                    const isToday = d.toDateString() === new Date('2026-03-11').toDateString();
+                    const div = document.createElement('div');
+                    div.className = 'flex-1 text-center py-2 border-l border-gray-200 dark:border-gray-700';
+                    div.innerHTML = `<div class="text-xs text-gray-500">${['一','二','三','四','五','六','日'][i]}</div>
+                                     <div class="${isToday ? 'bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center mx-auto' : 'text-lg font-semibold'}">${d.getDate()}</div>`;
+                    header.appendChild(div);
+                }
+                wrapper.appendChild(header);
+
+                // Body
+                const body = document.createElement('div');
+                body.className = 'flex flex-1 overflow-y-auto relative';
+                
+                // Time Column
+                const timeCol = document.createElement('div');
+                timeCol.className = 'w-16 flex-none border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800';
+                for(let h=0; h<24; h++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'h-16 text-xs text-gray-400 text-right pr-2 pt-0 border-b border-gray-100 dark:border-gray-700';
+                    slot.textContent = `${h}:00`;
+                    timeCol.appendChild(slot);
+                }
+                body.appendChild(timeCol);
+
+                // Days Grid
+                const grid = document.createElement('div');
+                grid.className = 'flex-1 flex relative';
+                
+                for(let i=0; i<7; i++) {
+                    const dayCol = document.createElement('div');
+                    dayCol.className = 'flex-1 border-l border-gray-200 dark:border-gray-700 relative';
+                    
+                    // Background lines
+                    for(let h=0; h<24; h++) {
+                        const line = document.createElement('div');
+                        line.className = 'h-16 border-b border-gray-100 dark:border-gray-700/50 box-border';
+                        dayCol.appendChild(line);
+                    }
+
+                    // Events
+                    const currentDay = new Date(startOfWeek);
+                    currentDay.setDate(currentDay.getDate() + i);
+                    const dayStart = new Date(currentDay); dayStart.setHours(0,0,0,0);
+                    const dayEnd = new Date(currentDay); dayEnd.setHours(23,59,59,999);
+                    
+                    const events = this.store.getEvents(dayStart, dayEnd);
+                    events.forEach(evt => {
+                        const start = new Date(evt.start);
+                        const end = new Date(evt.end);
+                        const top = (start.getHours() * 60 + start.getMinutes()) * (64/60); // 64px per hour
+                        const height = ((end - start) / (1000 * 60 * 60)) * 64;
+                        
+                        const el = document.createElement('div');
+                        const catStyle = CATEGORIES[evt.category] ? CATEGORIES[evt.category].color : 'bg-gray-200';
+                        el.className = `absolute left-1 right-1 rounded p-1 text-xs overflow-hidden cursor-pointer border-l-4 shadow-sm ${catStyle}`;
+                        el.style.top = `${top}px`;
+                        el.style.height = `${Math.max(height, 20)}px`;
+                        el.innerHTML = `<div class="font-bold truncate">${evt.title}</div>`;
+                        el.onclick = (e) => { e.stopPropagation(); this.openEventModal(evt.id); };
+                        dayCol.appendChild(el);
+                    });
+
+                    grid.appendChild(dayCol);
+                }
+                body.appendChild(grid);
+                wrapper.appendChild(body);
+                container.appendChild(wrapper);
+            }
+
+            // --- View: Day ---
+            renderDayView(container) {
+                const dayStart = new Date(this.currentDate);
+                dayStart.setHours(0,0,0,0);
+                const dayEnd = new Date(this.currentDate);
+                dayEnd.setHours(23,59,59,999);
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex flex-col h-full bg-white dark:bg-gray-800';
+
+                const body = document.createElement('div');
+                body.className = 'flex flex-1 overflow-y-auto relative';
+
+                // Time Col
+                const timeCol = document.createElement('div');
+                timeCol.className = 'w-20 flex-none border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800';
+                for(let h=0; h<24; h++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'h-20 text-sm text-gray-500 text-right pr-3 pt-1 border-b border-gray-100 dark:border-gray-700';
+                    slot.textContent = `${h}:00`;
+                    timeCol.appendChild(slot);
+                }
+                body.appendChild(timeCol);
+
+                // Event Col
+                const eventCol = document.createElement('div');
+                eventCol.className = 'flex-1 relative';
+                
+                for(let h=0; h<24; h++) {
+                    const line = document.createElement('div');
+                    line.className = 'h-20 border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer';
+                    line.onclick = () => {
+                        const clickDate = new Date(this.currentDate);
+                        clickDate.setHours(h, 0, 0, 0);
+                        this.openEventModal(null, clickDate);
+                    };
+                    eventCol.appendChild(line);
+                }
+
+                const events = this.store.getEvents(dayStart, dayEnd);
+                events.forEach(evt => {
+                    const start = new Date(evt.start);
+                    const end = new Date(evt.end);
+                    const top = (start.getHours() * 60 + start.getMinutes()) * (80/60); 
+                    const height = ((end - start) / (1000 * 60 * 60)) * 80;
+                    
+                    const el = document.createElement('div');
+                    const catStyle = CATEGORIES[evt.category] ? CATEGORIES[evt.category].color : 'bg-gray-200';
+                    el.className = `absolute left-4 right-4 rounded-lg p-3 shadow-md cursor-pointer border-l-4 ${catStyle}`;
+                    el.style.top = `${top}px`;
+                    el.style.height = `${Math.max(height, 40)}px`;
+                    el.innerHTML = `<div class="font-bold text-sm">${evt.title}</div>
+                                    <div class="text-xs opacity-80">${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                    ${evt.location ? `<div class="text-xs mt-1"><i class="fa-solid fa-location-dot"></i> ${evt.location}</div>` : ''}`;
+                    el.onclick = (e) => { e.stopPropagation(); this.openEventModal(evt.id); };
+                    eventCol.appendChild(el);
+                });
+
+                body.appendChild(eventCol);
+                wrapper.appendChild(body);
+                container.appendChild(wrapper);
+            }
+
+            // --- View: Agenda ---
+            renderAgendaView(container) {
+                const list = document.createElement('div');
+                list.className = 'p-4 space-y-4 max-w-3xl mx-auto';
+                
+                // Get next 30 days
+                const endRange = new Date(this.currentDate);
+                endRange.setDate(endRange.getDate() + 30);
+                
+                const events = this.store.getEvents(this.currentDate, endRange);
+                events.sort((a,b) => new Date(a.start) - new Date(b.start));
+
+                if (events.length === 0) {
+                    list.innerHTML = `<div class="text-center text-gray-400 mt-10">
+                        <i class="fa-solid fa-mug-hot text-4xl mb-3"></i>
+                        <p>未来30天暂无日程</p>
+                    </div>`;
+                } else {
+                    events.forEach(evt => {
+                        const date = new Date(evt.start);
+                        const dateStr = date.toLocaleDateString('zh-CN', {month:'long', day:'numeric', weekday:'long'});
+                        
+                        const item = document.createElement('div');
+                        item.className = 'bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex gap-4 hover:shadow-md transition-shadow cursor-pointer';
+                        const catStyle = CATEGORIES[evt.category] ? CATEGORIES[evt.category].color : 'bg-gray-200';
+                        
+                        item.innerHTML = `
+                            <div class="flex flex-col items-center justify-center min-w-[60px] text-center">
+                                <span class="text-2xl font-bold text-gray-800 dark:text-gray-200">${date.getDate()}</span>
+                                <span class="text-xs text-gray-500">${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="px-2 py-0.5 rounded text-xs ${catStyle}">${CATEGORIES[evt.category]?.label || '其他'}</span>
+                                    <span class="text-xs text-gray-400"><i class="fa-solid fa-flag"></i> ${evt.priority}</span>
+                                </div>
+                                <h4 class="font-bold text-gray-900 dark:text-white">${evt.title}</h4>
+                                ${evt.location ? `<div class="text-sm text-gray-500 mt-1"><i class="fa-solid fa-location-dot"></i> ${evt.location}</div>` : ''}
+                            </div>
+                        `;
+                        item.onclick = () => this.openEventModal(evt.id);
+                        list.appendChild(item);
+                    });
+                }
+                container.appendChild(list);
+            }
+
+            // --- View: Timeline (New) ---
+            renderTimelineView(container) {
+                // Horizontal timeline for the current month
+                const year = this.currentDate.getFullYear();
+                const month = this.currentDate.getMonth();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex flex-col h-full bg-white dark:bg-gray-800 overflow-hidden';
+                
+                // Header with Month Days
+                const header = document.createElement('div');
+                header.className = 'flex-none h-12 border-b border-gray-200 dark:border-gray-700 flex overflow-x-auto';
+                
+                for(let d=1; d<=daysInMonth; d++) {
+                    const cell = document.createElement('div');
+                    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const isToday = dateStr === '2026-03-11';
+                    const holiday = this.store.getHoliday(dateStr);
+                    
+                    cell.className = `flex-none w-12 sm:w-16 h-full flex flex-col items-center justify-center border-r border-gray-100 dark:border-gray-700 ${isToday ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`;
+                    cell.innerHTML = `<span class="text-xs text-gray-400">${d}</span>
+                                     ${holiday ? `<span class="text-[10px] text-red-500 truncate w-full text-center px-1">${holiday}</span>` : ''}`;
+                    header.appendChild(cell);
+                }
+                wrapper.appendChild(header);
+
+                // Timeline Content
+                const content = document.createElement('div');
+                content.className = 'flex-1 overflow-y-auto relative p-4';
+                
+                const events = this.store.getEvents(
+                    new Date(year, month, 1),
+                    new Date(year, month + 1, 0)
+                );
+                
+                events.forEach((evt, index) => {
+                    const start = new Date(evt.start);
+                    const end = new Date(evt.end);
+                    const day = start.getDate();
+                    const durationHours = (end - start) / (1000 * 60 * 60);
+                    
+                    const row = document.createElement('div');
+                    row.className = 'h-12 flex items-center mb-2 relative group';
+                    
+                    // Track line
+                    const track = document.createElement('div');
+                    track.className = 'absolute left-0 right-0 h-px bg-gray-100 dark:bg-gray-700 top-1/2';
+                    row.appendChild(track);
+
+                    // Event Label
+                    const label = document.createElement('div');
+                    label.className = 'w-32 sm:w-48 text-right pr-4 text-xs truncate z-10';
+                    label.textContent = evt.title;
+                    row.appendChild(label);
+
+                    // Event Bar
+                    const barContainer = document.createElement('div');
+                    barContainer.className = 'flex-1 h-full relative ml-4';
+                    
+                    // Calculate offset: (day-1) * width_per_day + (hour/24 * width_per_day)
+                    // Simplified: We map 1 day to approx 60px
+                    const dayWidth = 60; 
+                    const totalWidth = daysInMonth * dayWidth;
+                    barContainer.style.width = `${totalWidth}px`;
+                    
+                    const leftOffset = (day - 1) * dayWidth + (start.getHours() / 24) * dayWidth;
+                    const barWidth = Math.max(durationHours / 24 * dayWidth, 4); // Min 4px width
+                    
+                    const bar = document.createElement('div');
+                    const catColor = CATEGORIES[evt.category] ? CATEGORIES[evt.category].color.split(' ')[0].replace('bg-', 'bg-') : 'bg-gray-400';
+                    bar.className = `absolute h-6 rounded-full top-3 cursor-pointer hover:opacity-80 shadow-sm ${catColor}`;
+                    bar.style.left = `${leftOffset}px`;
+                    bar.style.width = `${barWidth}px`;
+                    bar.title = `${evt.title} (${start.getHours()}:00 - ${end.getHours()}:00)`;
+                    bar.onclick = () => this.openEventModal(evt.id);
+                    
+                    barContainer.appendChild(bar);
+                    row.appendChild(barContainer);
+                    
+                    content.appendChild(row);
+                });
+                
+                wrapper.appendChild(content);
+                container.appendChild(wrapper);
+            }
+
+            // --- Modal & Form Logic ---
+            openEventModal(eventId = null, dateHint = null) {
+                const modal = document.getElementById('event-modal');
+                const form = document.getElementById('event-form');
+                const deleteBtn = document.getElementById('btn-delete-event');
+                
+                form.reset();
+                document.querySelectorAll('.reminder-check').forEach(cb => cb.checked = false);
+
+                if (eventId) {
+                    const evt = this.store.events.find(e => e.id === eventId);
+                    this.selectedEventId = eventId;
+                    document.getElementById('modal-title').textContent = '编辑日程';
+                    document.getElementById('event-id').value = evt.id;
+                    document.getElementById('event-title').value = evt.title;
+                    document.getElementById('event-start').value = evt.start.substring(0, 16);
+                    document.getElementById('event-end').value = evt.end.substring(0, 16);
+                    document.getElementById('event-category').value = evt.category;
+                    document.getElementById('event-priority').value = evt.priority;
+                    document.getElementById('event-location').value = evt.location || '';
+                    document.getElementById('event-location-alert').checked = !!evt.locationAlert;
+                    document.getElementById('event-notes').value = evt.notes || '';
+                    
+                    if (evt.reminders) {
+                        evt.reminders.forEach(r => {
+                            const cb = document.querySelector(`.reminder-check[value="${r}"]`);
+                            if (cb) cb.checked = true;
+                        });
+                    }
+                    deleteBtn.classList.remove('hidden');
+                } else {
+                    this.selectedEventId = null;
+                    document.getElementById('modal-title').textContent = '新建日程';
+                    deleteBtn.classList.add('hidden');
+                    
+                    if (dateHint) {
+                        const iso = dateHint.toISOString();
+                        document.getElementById('event-start').value = iso.substring(0, 16);
+                        // Default 1 hour duration
+                        const end = new Date(dateHint.getTime() + 60*60*1000);
+                        document.getElementById('event-end').value = end.toISOString().substring(0, 16);
+                    }
+                }
+
+                modal.classList.remove('hidden');
+            }
+
+            closeEventModal() {
+                document.getElementById('event-modal').classList.add('hidden');
+            }
+
+            saveEvent() {
+                const title = document.getElementById('event-title').value;
+                const start = document.getElementById('event-start').value;
+                const end = document.getElementById('event-end').value;
+                
+                if (!title || !start || !end) {
+                    this.showToast('请填写完整信息', 'error');
+                    return;
+                }
+                if (new Date(start) >= new Date(end)) {
+                    this.showToast('结束时间必须晚于开始时间', 'error');
+                    return;
+                }
+
+                const reminders = [];
+                document.querySelectorAll('.reminder-check:checked').forEach(cb => reminders.push(parseInt(cb.value)));
+
+                const eventData = {
+                    id: this.selectedEventId || Date.now().toString(),
+                    title,
+                    start: new Date(start).toISOString(),
+                    end: new Date(end).toISOString(),
+                    category: document.getElementById('event-category').value,
+                    priority: parseInt(document.getElementById('event-priority').value),
+                    location: document.getElementById('event-location').value,
+                    locationAlert: document.getElementById('event-location-alert').checked,
+                    notes: document.getElementById('event-notes').value,
+                    reminders
+                };
+
+                if (this.selectedEventId) {
+                    this.store.updateEvent(eventData);
+                    this.showToast('日程已更新');
+                } else {
+                    this.store.addEvent(eventData);
+                    this.showToast('日程已创建');
+                }
+
+                this.closeEventModal();
+                this.render();
+            }
+
+            deleteEvent() {
+                if (this.selectedEventId) {
+                    this.store.deleteEvent(this.selectedEventId);
+                    this.showToast('日程已删除');
+                    this.closeEventModal();
+                    this.render();
+                }
+            }
+
+            // --- Clipboard Import (New) ---
+            async importFromClipboard() {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    this.showToast('正在解析剪贴板内容...', 'info');
+                    
+                    // Simple Regex Parsing
+                    // Time patterns: "14:00", "下午2点", "2pm"
+                    const timeRegex = /(\d{1,2})[:点](\d{0,2})/;
+                    const match = text.match(timeRegex);
+                    
+                    if (match) {
+                        let hour = parseInt(match[1]);
+                        const minute = match[2] ? parseInt(match[2]) : 0;
+                        if (text.includes('下午') && hour < 12) hour += 12;
+                        
+                        // Set time to today or next appropriate slot
+                        const date = new Date(this.currentDate);
+                        date.setHours(hour, minute, 0, 0);
+                        
+                        document.getElementById('event-start').value = date.toISOString().substring(0, 16);
+                        const end = new Date(date.getTime() + 60*60*1000);
+                        document.getElementById('event-end').value = end.toISOString().substring(0, 16);
+                        
+                        // Try to find location keywords
+                        if (text.includes('在')) {
+                            const locParts = text.split('在');
+                            if (locParts.length > 1) {
+                                const loc = locParts[1].split(' ')[0].split('，')[0].split('。')[0];
+                                document.getElementById('event-location').value = loc;
+                            }
+                        }
+                        
+                        // Title (remove time and location)
+                        let title = text.replace(timeRegex, '').replace(/在.*/, '').trim();
+                        if (title.length < 2) title = '未命名事件';
+                        document.getElementById('event-title').value = title;
+                        
+                        this.showToast('已自动识别并填充表单', 'success');
+                    } else {
+                        this.showToast('未能识别时间信息，已填充标题', 'warning');
+                        document.getElementById('event-title').value = text.substring(0, 20);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    this.showToast('无法读取剪贴板，请检查权限', 'error');
+                }
+            }
+
+            // --- Smart Schedule (AI Algorithm) ---
+            runSmartSchedule() {
+                this.showToast('正在智能分析空闲时间...', 'info');
+                
+                // Get events for the current selected day
+                const startOfDay = new Date(this.currentDate);
+                startOfDay.setHours(8, 0, 0, 0); // Start work day at 8 AM
+                
+                const endOfDay = new Date(this.currentDate);
+                endOfDay.setHours(20, 0, 0, 0); // End work day at 8 PM
+                
+                let dayEvents = this.store.getEvents(
+                    new Date(this.currentDate.setHours(0,0,0,0)),
+                    new Date(this.currentDate.setHours(23,59,59,999))
+                );
+
+                if (dayEvents.length === 0) {
+                    this.showToast('今日无日程可安排', 'info');
+                    return;
+                }
+
+                // 1. Sort by Priority (High to Low)
+                dayEvents.sort((a, b) => b.priority - a.priority);
+
+                // 2. Greedy placement
+                let currentTime = new Date(startOfDay);
+                let movedCount = 0;
+
+                dayEvents.forEach(evt => {
+                    const duration = new Date(evt.end) - new Date(evt.start);
+                    const newStart = new Date(currentTime);
+                    const newEnd = new Date(currentTime.getTime() + duration);
+                    
+                    // Check if event needs moving (allow some buffer for fixed events logic if we had that flag)
+                    // For now, we compact everything.
+                    
+                    evt.start = newStart.toISOString();
+                    evt.end = newEnd.toISOString();
+                    
+                    this.store.updateEvent(evt);
+                    
+                    // Move current time forward + 15 min buffer
+                    currentTime = new Date(newEnd.getTime() + 15*60000);
+                    movedCount++;
+                });
+
+                this.render();
+                this.showToast(`智能排程完成，已优化 ${movedCount} 个任务`, 'success');
+            }
+
+            // --- Eisenhower Matrix ---
+            showEisenhowerMatrix() {
+                const modal = document.getElementById('matrix-modal');
+                const content = document.getElementById('matrix-content');
+                modal.classList.remove('hidden');
+                
+                // Get future events
+                const events = this.store.getEvents(new Date(), new Date('2026-12-31'));
+                
+                const quadrants = {
+                    q1: { title: '重要且紧急', desc: '立即去做', events: [] },
+                    q2: { title: '重要不紧急', desc: '制定计划', events: [] },
+                    q3: { title: '不重要但紧急', desc: '授权/委托', events: [] },
+                    q4: { title: '不重要不紧急', desc: '尽量少做', events: [] }
+                };
+
+                events.forEach(evt => {
+                    if (evt.priority >= 4) quadrants.q1.events.push(evt);
+                    else if (evt.priority === 3) quadrants.q2.events.push(evt);
+                    else if (evt.priority === 2) quadrants.q3.events.push(evt);
+                    else quadrants.q4.events.push(evt);
+                });
+
+                content.innerHTML = '';
+                Object.values(quadrants).forEach(q => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600 flex flex-col';
+                    div.innerHTML = `
+                        <h4 class="font-bold text-gray-800 dark:text-gray-200 mb-1">${q.title}</h4>
+                        <p class="text-xs text-gray-500 mb-3">${q.desc}</p>
+                        <div class="space-y-2 overflow-y-auto flex-1">
+                            ${q.events.map(e => `
+                                <div class="bg-white dark:bg-gray-800 p-2 rounded shadow-sm text-xs border-l-2 ${CATEGORIES[e.category]?.color.split(' ')[0] || 'bg-gray-200'}">
+                                    ${e.title}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    content.appendChild(div);
+                });
+            }
+
+            closeMatrixModal() {
+                document.getElementById('matrix-modal').classList.add('hidden');
+            }
+
+            // --- Notification System ---
+            showToast(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                
+                let colors = 'bg-white text-gray-800 border-gray-200';
+                let icon = '<i class="fa-solid fa-check-circle text-green-500"></i>';
+                
+                if (type === 'error') {
+                    icon = '<i class="fa-solid fa-circle-exclamation text-red-500"></i>';
+                } else if (type === 'info') {
+                    icon = '<i class="fa-solid fa-circle-info text-blue-500"></i>';
+                }
+
+                toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${colors} dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700 min-w-[300px]`;
+                toast.innerHTML = `${icon} <span class="text-sm font-medium">${message}</span>`;
+                
+                container.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(-20px)';
+                    toast.style.transition = 'all 0.3s';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            // --- Reminder Checker ---
+            startReminderChecker() {
+                setInterval(() => {
+                    const now = new Date();
+                    this.store.events.forEach(evt => {
+                        if (!evt.reminders) return;
+                        
+                        const start = new Date(evt.start);
+                        const diffMin = Math.floor((start - now) / 60000);
+                        
+                        // Check if any reminder matches current diff (within 1 minute window)
+                        if (evt.reminders.includes(diffMin)) {
+                            // Simple debounce check using localStorage flag could be added here
+                            // For now, just trigger
+                            this.showToast(`🔔 提醒: ${evt.title} 将在 ${diffMin === 0 ? '现在' : diffMin + '分钟'} 开始`, 'info');
+                            
+                            // Remove this specific reminder trigger to avoid spam
+                            evt.reminders = evt.reminders.filter(r => r !== diffMin);
+                            this.store.updateEvent(evt);
+                        }
+                    });
+                    
+                    // Location Check Simulation (Mock)
+                    // In a real app, we would use navigator.geolocation.watchPosition
+                    // Here we just check if any event has locationAlert enabled and is starting soon
+                    this.store.events.forEach(evt => {
+                        if (evt.locationAlert && evt.location) {
+                            const start = new Date(evt.start);
+                            const diffMin = Math.floor((start - now) / 60000);
+                            if (diffMin === 30) {
+                                this.showToast(`📍 地点提醒: 您即将前往 "${evt.location}"`, 'info');
+                            }
+                        }
+                    });
+
+                }, 60000); // Check every minute
+            }
+        }
+
+        // Initialize App
+        const app = new App();
+
+    </script>
+</body>
+</html>
